@@ -14,22 +14,20 @@ import {
   MenuItem,
   AppBar,
   Toolbar,
-  IconButton,
   Drawer,
   List,
   ListItem,
   ListItemText,
 } from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../services/firebase";
 import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-
 
 const Relatorios = () => {
   const [relatorios, setRelatorios] = useState([]);
+  const [frequencias, setFrequencias] = useState([]);
   const [turmas, setTurmas] = useState([]);
   const [filtros, setFiltros] = useState({ turmaId: "", aluno: "", data: "" });
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -45,7 +43,7 @@ const Relatorios = () => {
     { name: "Notificações", path: "/notificacoes" },
   ];
 
-  // Carregar dados de relatórios e turmas do Firestore
+  // Carregar dados de relatórios, frequências e turmas do Firestore
   const carregarRelatorios = async () => {
     const querySnapshot = await getDocs(collection(db, "relatorios"));
     const dadosCarregados = querySnapshot.docs.map((doc) => ({
@@ -53,6 +51,15 @@ const Relatorios = () => {
       ...doc.data(),
     }));
     setRelatorios(dadosCarregados);
+  };
+
+  const carregarFrequencias = async () => {
+    const querySnapshot = await getDocs(collection(db, "frequencias"));
+    const frequenciasCarregadas = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    setFrequencias(frequenciasCarregadas);
   };
 
   const carregarTurmas = async () => {
@@ -64,57 +71,55 @@ const Relatorios = () => {
     setTurmas(turmasCarregadas);
   };
 
-  const aplicarFiltros = () => {
-    return relatorios.filter((relatorio) => {
-      const matchTurma =
-        !filtros.turmaId || relatorio.turmaId === filtros.turmaId;
+  const aplicarFiltros = (dados) => {
+    return dados.filter((item) => {
+      const matchTurma = !filtros.turmaId || item.turmaId === filtros.turmaId;
       const matchAluno =
         !filtros.aluno ||
-        relatorio.aluno.toLowerCase().includes(filtros.aluno.toLowerCase());
+        item.aluno.toLowerCase().includes(filtros.aluno.toLowerCase());
       const matchData =
-        !filtros.data || relatorio.data.includes(filtros.data);
+        !filtros.data || item.data.includes(filtros.data);
       return matchTurma && matchAluno && matchData;
     });
   };
 
   const exportarExcel = () => {
-    const dadosParaExportar = aplicarFiltros().map((item) => ({
+    const dadosParaExportar = aplicarFiltros(frequencias).map((item) => ({
       Turma: turmas.find((turma) => turma.id === item.turmaId)?.nome || "N/A",
       Aluno: item.aluno,
       Data: item.data,
-      Descrição: item.descricao,
+      Status: item.status,
     }));
 
     const ws = XLSX.utils.json_to_sheet(dadosParaExportar);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Relatórios");
-    XLSX.writeFile(wb, "relatorios.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Frequências");
+    XLSX.writeFile(wb, "frequencias.xlsx");
   };
 
   useEffect(() => {
     carregarRelatorios();
+    carregarFrequencias();
     carregarTurmas();
   }, []);
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f0f4f8" }}>
-      {/* Cabeçalho */}
       <AppBar position="static">
         <Toolbar>
-           <Button
+          <Button
             color="inherit"
             startIcon={<ArrowBackIcon />}
             onClick={() => navigate("/dashboard")}
-        >
+          >
             Voltar
-        </Button>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          </Button>
+          <Typography variant="h6" sx={{ flexGrow: 1, textAlign: "center" }}>
             Sistema de Gestão Escolar
           </Typography>
         </Toolbar>
       </AppBar>
 
-      {/* Menu Lateral */}
       <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
         <List sx={{ width: 240 }}>
           {pages.map((page) => (
@@ -125,10 +130,9 @@ const Relatorios = () => {
         </List>
       </Drawer>
 
-      {/* Conteúdo Principal */}
       <Box sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Relatórios
+        <Typography variant="h4" align="center" gutterBottom>
+          Relatórios e Frequências
         </Typography>
 
         {/* Filtros */}
@@ -164,32 +168,35 @@ const Relatorios = () => {
         </Box>
 
         {/* Botões de Exportação */}
-        <Box sx={{ mb: 4, display: "flex", gap: 2 }}>
+        <Box sx={{ mb: 4, display: "flex", justifyContent: "center", gap: 2 }}>
           <Button variant="contained" color="primary" onClick={exportarExcel}>
-            Exportar para Excel
+            Exportar Frequências para Excel
           </Button>
         </Box>
 
-        {/* Tabela de Relatórios */}
-        <TableContainer component={Paper}>
+        {/* Tabela de Frequências */}
+        <Typography variant="h6" gutterBottom>
+          Frequências
+        </Typography>
+        <TableContainer component={Paper} sx={{ mb: 4 }}>
           <Table>
             <TableHead>
               <TableRow>
                 <TableCell>Turma</TableCell>
                 <TableCell>Aluno</TableCell>
                 <TableCell>Data</TableCell>
-                <TableCell>Descrição</TableCell>
+                <TableCell>Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {aplicarFiltros().map((relatorio) => (
-                <TableRow key={relatorio.id}>
+              {aplicarFiltros(frequencias).map((frequencia) => (
+                <TableRow key={frequencia.id}>
                   <TableCell>
-                    {turmas.find((turma) => turma.id === relatorio.turmaId)?.nome || "N/A"}
+                    {turmas.find((turma) => turma.id === frequencia.turmaId)?.nome || "N/A"}
                   </TableCell>
-                  <TableCell>{relatorio.aluno}</TableCell>
-                  <TableCell>{relatorio.data}</TableCell>
-                  <TableCell>{relatorio.descricao}</TableCell>
+                  <TableCell>{frequencia.aluno}</TableCell>
+                  <TableCell>{frequencia.data}</TableCell>
+                  <TableCell>{frequencia.status}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

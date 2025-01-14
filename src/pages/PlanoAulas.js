@@ -25,11 +25,12 @@ import {
   Drawer,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { useNavigate } from "react-router-dom";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-
 
 const PlanoAulas = () => {
   const [turmas, setTurmas] = useState([]);
@@ -85,6 +86,9 @@ const PlanoAulas = () => {
   };
 
   const handleExcluirPlano = async (id) => {
+    const confirmed = window.confirm("Tem certeza de que deseja excluir este plano de aula?");
+    if (!confirmed) return;
+
     try {
       await deleteDoc(doc(db, "planosAulas", id));
       carregarPlanos();
@@ -108,23 +112,21 @@ const PlanoAulas = () => {
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f0f4f8" }}>
-      {/* Cabeçalho */}
       <AppBar position="static">
         <Toolbar>
-           <Button
-                color="inherit"
-                startIcon={<ArrowBackIcon />}
-                onClick={() => navigate("/dashboard")}
-            >
-                Voltar
-            </Button>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          <Button
+            color="inherit"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate("/dashboard")}
+          >
+            Voltar
+          </Button>
+          <Typography variant="h6" sx={{ flexGrow: 1, textAlign: "center" }}>
             Sistema de Gestão Escolar
           </Typography>
         </Toolbar>
       </AppBar>
 
-      {/* Menu Lateral */}
       <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
         <List>
           <ListItem button onClick={() => navigate("/dashboard")}>
@@ -133,9 +135,8 @@ const PlanoAulas = () => {
         </List>
       </Drawer>
 
-      {/* Conteúdo Principal */}
       <Box sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom>
+        <Typography variant="h4" gutterBottom sx={{ textAlign: "start" }}>
           Planejamento de Aulas
         </Typography>
 
@@ -148,7 +149,6 @@ const PlanoAulas = () => {
           Adicionar Plano de Aula
         </Button>
 
-        {/* Tabela de Planos de Aula */}
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -158,7 +158,7 @@ const PlanoAulas = () => {
                 <TableCell>Conteúdo</TableCell>
                 <TableCell>Estratégias</TableCell>
                 <TableCell>Matéria</TableCell>
-                <TableCell>Ações</TableCell>
+                <TableCell align="right">Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -169,10 +169,11 @@ const PlanoAulas = () => {
                   <TableCell>{plano.conteudo}</TableCell>
                   <TableCell>{plano.estrategias}</TableCell>
                   <TableCell>{plano.materia}</TableCell>
-                  <TableCell>
+                  <TableCell align="right">
                     <Button
                       variant="outlined"
                       color="error"
+                      startIcon={<DeleteIcon />}
                       onClick={() => handleExcluirPlano(plano.id)}
                     >
                       Excluir
@@ -184,7 +185,6 @@ const PlanoAulas = () => {
           </Table>
         </TableContainer>
 
-        {/* Modal de Adicionar Plano de Aula */}
         <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
           <DialogTitle>Adicionar Plano de Aula</DialogTitle>
           <DialogContent>

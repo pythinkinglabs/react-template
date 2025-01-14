@@ -14,6 +14,7 @@ import ResumoFinal from "./pages/ResumoFinal";
 import Avaliacoes from "./pages/Avaliacoes";
 import EstrategiasPedagogicas from "./pages/EstrategiasPedagogicas";
 import PlanoAulas from "./pages/PlanoAulas";
+import RegistroFrequencia from "./pages/RegistroFrequencia";
 
 const AppRouter = () => {
   return (
@@ -31,7 +32,8 @@ const AppRouter = () => {
         <Route path="/registro" element={<Registro />} />
         <Route path="/relatorios" element={<Relatorios />} />        
         <Route path="/resumo-final" element={<ResumoFinal />} />
-        <Route path="/turmas" element={<Turmas />} />                                                        
+        <Route path="/turmas" element={<Turmas />} />            
+        <Route path="/registro-frequencia" element={<RegistroFrequencia />} />
       </Routes>
     </Router>
   );

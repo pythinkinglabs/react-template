@@ -121,27 +121,6 @@ const Avaliacoes = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Menu Lateral */}
-      <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-        <List>
-          <ListItem button onClick={() => navigate("/dashboard")}>
-            <ListItemText primary="Dashboard" />
-          </ListItem>
-          <ListItem button onClick={() => navigate("/alunos")}> 
-            <ListItemText primary="Alunos" /> 
-          </ListItem>
-          <ListItem button onClick={() => navigate("/turmas")}> 
-            <ListItemText primary="Turmas" /> 
-          </ListItem>
-          <ListItem button onClick={() => navigate("/avaliacoes")}> 
-            <ListItemText primary="Avaliações" /> 
-          </ListItem>
-          <ListItem button onClick={() => navigate("/relatorios")}> 
-            <ListItemText primary="Relatórios" /> 
-          </ListItem>
-        </List>
-      </Drawer>
-
       {/* Conteúdo Principal */}
       <Box sx={{ p: 4 }}>
         <Typography variant="h4" gutterBottom>
@@ -178,9 +157,8 @@ const Avaliacoes = () => {
               </MenuItem>
             ))}
           </TextField>
-        </Box>
 
-        <Button
+          <Button
           variant="contained"
           color="primary"
           onClick={() => {
@@ -192,6 +170,10 @@ const Avaliacoes = () => {
         >
           Adicionar Avaliação
         </Button>
+        
+        </Box>
+
+       
 
         <TableContainer component={Paper}>
           <Table>

@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
+  Grid,
+  Button,
   Table,
   TableBody,
   TableCell,
@@ -9,130 +11,184 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Button,
+  MenuItem,
+  TextField,
+  CircularProgress,
   AppBar,
   Toolbar,
-  IconButton,
   Drawer,
   List,
   ListItem,
   ListItemText,
 } from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { useNavigate } from "react-router-dom";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
 const ResumoFinal = () => {
   const [dadosResumo, setDadosResumo] = useState([]);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [turmas, setTurmas] = useState([]);
+  const [filtros, setFiltros] = useState({ turmaId: "", periodo: "", aluno: "" });
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const pages = [
-    { name: "Dashboard", path: "/dashboard" },
-    { name: "Alunos", path: "/alunos" },
-    { name: "Turmas", path: "/turmas" },
-    { name: "Plano de Aulas", path: "/plano-aulas" },
-    { name: "Avaliações", path: "/avaliacoes" },
-    { name: "Relatórios", path: "/relatorios" },
-    { name: "Notificações", path: "/notificacoes" },
-    { name: "Intervenções", path: "/intervencoes" },
-  ];
-
-  // Carregar dados do Firestore
   const carregarDados = async () => {
+    setLoading(true);
     const querySnapshot = await getDocs(collection(db, "resumoFinal"));
     const dadosCarregados = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
     setDadosResumo(dadosCarregados);
+    setLoading(false);
   };
 
-  // Exportar para Excel
-  const exportarExcel = () => {
-    const dadosParaExportar = dadosResumo.map((item) => ({
-      Aluno: item.aluno,
-      Frequência: `${item.frequencia}%`,
-      "Carga Horária": `${item.cargaHoraria}h`,
-      Nota: item.nota,
+  const carregarTurmas = async () => {
+    const querySnapshot = await getDocs(collection(db, "turmas"));
+    const turmasCarregadas = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
     }));
-
-    const ws = XLSX.utils.json_to_sheet(dadosParaExportar);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "ResumoFinal");
-    XLSX.writeFile(wb, "ResumoFinal.xlsx");
-  };
-
-  // Exportar para PDF
-  const exportarPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Resumo Final", 20, 10);
-    doc.autoTable({
-      head: [["Aluno", "Frequência", "Carga Horária", "Nota"]],
-      body: dadosResumo.map((item) => [
-        item.aluno,
-        `${item.frequencia}%`,
-        `${item.cargaHoraria}h`,
-        item.nota,
-      ]),
-    });
-    doc.save("ResumoFinal.pdf");
+    setTurmas(turmasCarregadas);
   };
 
   useEffect(() => {
     carregarDados();
+    carregarTurmas();
   }, []);
+
+  const aplicarFiltros = () => {
+    return dadosResumo.filter((item) => {
+      const matchTurma = !filtros.turmaId || item.turmaId === filtros.turmaId;
+      const matchAluno =
+        !filtros.aluno ||
+        item.aluno.toLowerCase().includes(filtros.aluno.toLowerCase());
+      const matchPeriodo = !filtros.periodo || item.periodo === filtros.periodo;
+      return matchTurma && matchAluno && matchPeriodo;
+    });
+  };
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f0f4f8" }}>
       {/* Cabeçalho */}
-      <AppBar position="static">
+      <AppBar position="static" sx={{ boxShadow: 1 }}>
         <Toolbar>
           <Button
             color="inherit"
             startIcon={<ArrowBackIcon />}
             onClick={() => navigate("/dashboard")}
-        >
+          >
             Voltar
-        </Button>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Sistema de Gestão Escolar
+          </Button>
+          <Typography variant="h6" sx={{ flexGrow: 1, textAlign: "center" }}>
+            Resumo Final
           </Typography>
         </Toolbar>
       </AppBar>
 
-      {/* Menu Lateral */}
-      <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-        <List sx={{ width: 240 }}>
-          {pages.map((page) => (
-            <ListItem button key={page.name} onClick={() => navigate(page.path)}>
-              <ListItemText primary={page.name} />
-            </ListItem>
-          ))}
-        </List>
-      </Drawer>
-
       {/* Conteúdo Principal */}
-      <Box sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Resumo Final
-        </Typography>
-
-        {/* Botões de Exportação */}
-        <Box sx={{ mb: 2, display: "flex", gap: 2 }}>
-          <Button variant="contained" color="primary" onClick={exportarExcel}>
-            Exportar para Excel
-          </Button>
-          <Button variant="contained" color="secondary" onClick={exportarPDF}>
-            Exportar para PDF
-          </Button>
+      <Box
+        sx={{
+          mt: 4,
+          mx: "auto",
+          maxWidth: "1200px",
+          backgroundColor: "#fff",
+          borderRadius: 2,
+          boxShadow: 3,
+          p: 4,
+        }}
+      >
+        {/* Filtros */}
+        <Box sx={{ display: "flex", gap: 2, mb: 4 }}>
+          <TextField
+            select
+            label="Selecione a Turma"
+            fullWidth
+            value={filtros.turmaId}
+            onChange={(e) => setFiltros({ ...filtros, turmaId: e.target.value })}
+          >
+            <MenuItem value="">Todas as Turmas</MenuItem>
+            {turmas.map((turma) => (
+              <MenuItem key={turma.id} value={turma.id}>
+                {turma.nome}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            label="Período"
+            type="date"
+            fullWidth
+            value={filtros.periodo}
+            onChange={(e) => setFiltros({ ...filtros, periodo: e.target.value })}
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            label="Filtrar por Aluno"
+            fullWidth
+            value={filtros.aluno}
+            onChange={(e) => setFiltros({ ...filtros, aluno: e.target.value })}
+          />
         </Box>
+
+        {/* Gráficos */}
+        {loading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <Grid container spacing={4} sx={{ mb: 4 }}>
+            <Grid item xs={12} md={6}>
+              <Typography variant="h6" gutterBottom>
+                Frequência por Turma
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={dadosResumo}
+                    dataKey="frequencia"
+                    nameKey="aluno"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    fill="#8884d8"
+                  >
+                    {dadosResumo.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Typography variant="h6" gutterBottom>
+                Notas Médias
+              </Typography>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={dadosResumo}
+                    dataKey="nota"
+                    nameKey="aluno"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    fill="#8884d8"
+                  >
+                    {dadosResumo.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </Grid>
+          </Grid>
+        )}
 
         {/* Tabela de Dados */}
         <TableContainer component={Paper}>
@@ -141,17 +197,15 @@ const ResumoFinal = () => {
               <TableRow>
                 <TableCell>Aluno</TableCell>
                 <TableCell>Frequência</TableCell>
-                <TableCell>Carga Horária</TableCell>
                 <TableCell>Nota</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {dadosResumo.map((resumo) => (
-                <TableRow key={resumo.id}>
-                  <TableCell>{resumo.aluno}</TableCell>
-                  <TableCell>{`${resumo.frequencia}%`}</TableCell>
-                  <TableCell>{`${resumo.cargaHoraria}h`}</TableCell>
-                  <TableCell>{resumo.nota}</TableCell>
+              {aplicarFiltros().map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>{item.aluno}</TableCell>
+                  <TableCell>{`${item.frequencia}%`}</TableCell>
+                  <TableCell>{item.nota}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

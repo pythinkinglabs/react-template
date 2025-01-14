@@ -26,6 +26,8 @@ import {
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { useNavigate } from "react-router-dom";
@@ -48,7 +50,6 @@ const Alunos = () => {
     { name: "Notificações", path: "/notificacoes" },
   ];
 
-  // Carregar alunos do Firestore
   const carregarAlunos = async () => {
     const querySnapshot = await getDocs(collection(db, "alunos"));
     const alunosCarregados = querySnapshot.docs.map((doc) => ({
@@ -58,7 +59,6 @@ const Alunos = () => {
     setAlunos(alunosCarregados);
   };
 
-  // Carregar turmas do Firestore
   const carregarTurmas = async () => {
     const querySnapshot = await getDocs(collection(db, "turmas"));
     const turmasCarregadas = querySnapshot.docs.map((doc) => ({
@@ -68,7 +68,6 @@ const Alunos = () => {
     setTurmas(turmasCarregadas);
   };
 
-  // Adicionar ou editar aluno
   const handleSalvarAluno = async () => {
     if (!novoAluno.nome || !novoAluno.turmaId) {
       alert("Todos os campos são obrigatórios.");
@@ -77,11 +76,9 @@ const Alunos = () => {
 
     try {
       if (novoAluno.id) {
-        // Atualizar aluno existente
         const alunoRef = doc(db, "alunos", novoAluno.id);
         await updateDoc(alunoRef, { nome: novoAluno.nome, turmaId: novoAluno.turmaId });
       } else {
-        // Adicionar novo aluno
         await addDoc(collection(db, "alunos"), { nome: novoAluno.nome, turmaId: novoAluno.turmaId });
       }
 
@@ -93,8 +90,10 @@ const Alunos = () => {
     }
   };
 
-  // Excluir aluno
   const handleExcluirAluno = async (id) => {
+    const confirmed = window.confirm("Tem certeza de que deseja excluir este aluno?");
+    if (!confirmed) return;
+
     try {
       await deleteDoc(doc(db, "alunos", id));
       carregarAlunos();
@@ -113,16 +112,16 @@ const Alunos = () => {
       {/* Cabeçalho */}
       <AppBar position="static">
         <Toolbar>
-        <Button
+          <Button
             color="inherit"
             startIcon={<ArrowBackIcon />}
             onClick={() => navigate("/dashboard")}
           >
             Voltar
           </Button>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" sx={{ flexGrow: 1, textAlign: "center" }}>
             Sistema de Gestão Escolar
-          </Typography>          
+          </Typography>
         </Toolbar>
       </AppBar>
 
@@ -139,7 +138,7 @@ const Alunos = () => {
 
       {/* Conteúdo */}
       <Box sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom>
+        <Typography variant="h4" gutterBottom sx={{ textAlign: "start" }}>
           Gerenciamento de Alunos
         </Typography>
 
@@ -162,9 +161,12 @@ const Alunos = () => {
           <Button
             variant="contained"
             color="primary"
-            onClick={() => setDialogOpen(true)}
+            onClick={() => {
+              setDialogOpen(true);
+              setNovoAluno({ nome: "", turmaId: "" });
+            }}
           >
-            Adicionar Aluno
+            Adicionar aluno
           </Button>
         </Box>
 
@@ -175,7 +177,7 @@ const Alunos = () => {
               <TableRow>
                 <TableCell>Nome</TableCell>
                 <TableCell>Turma</TableCell>
-                <TableCell>Ações</TableCell>
+                <TableCell align="right">Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -187,10 +189,11 @@ const Alunos = () => {
                     <TableCell>
                       {turmas.find((turma) => turma.id === aluno.turmaId)?.nome || "N/A"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell align="right">
                       <Button
                         variant="outlined"
                         color="primary"
+                        startIcon={<EditIcon />}
                         onClick={() => {
                           setNovoAluno(aluno);
                           setDialogOpen(true);
@@ -202,6 +205,7 @@ const Alunos = () => {
                       <Button
                         variant="outlined"
                         color="error"
+                        startIcon={<DeleteIcon />}
                         onClick={() => handleExcluirAluno(aluno.id)}
                       >
                         Excluir
@@ -215,7 +219,7 @@ const Alunos = () => {
 
         {/* Modal de Adicionar/Editar Aluno */}
         <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
-          <DialogTitle>{novoAluno.id ? "Editar Aluno" : "Adicionar Aluno"}</DialogTitle>
+          <DialogTitle>{novoAluno.id ? "Editar" : "Adicionar"}</DialogTitle>
           <DialogContent>
             <TextField
               label="Nome"

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -6,6 +6,7 @@ import {
   Button,
   Alert,
   CircularProgress,
+  Avatar,
   AppBar,
   Toolbar,
   IconButton,
@@ -15,19 +16,22 @@ import {
   ListItemText,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import { getAuth, updateProfile, updateEmail } from "firebase/auth";
+import { getAuth, reauthenticateWithCredential, EmailAuthProvider, updatePassword } from "firebase/auth";
+import { collection, getDoc, setDoc, doc } from "firebase/firestore";
+import { db } from "../services/firebase";
 import { useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-
 
 const Configuracoes = () => {
   const auth = getAuth();
   const user = auth.currentUser;
 
-  const [nome, setNome] = useState(user?.displayName || "");
-  const [email, setEmail] = useState(user?.email || "");
   const [senhaAtual, setSenhaAtual] = useState("");
   const [novaSenha, setNovaSenha] = useState("");
+  const [endereco, setEndereco] = useState("");
+  const [complemento, setComplemento] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [foto, setFoto] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -44,29 +48,45 @@ const Configuracoes = () => {
     { name: "Notificações", path: "/notificacoes" },
   ];
 
+  useEffect(() => {
+    const carregarDadosUsuario = async () => {
+      if (user) {
+        const userDoc = await getDoc(doc(db, "usuarios", user.uid));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setEndereco(data.endereco || "");
+          setComplemento(data.complemento || "");
+          setTelefone(data.telefone || "");
+        }
+      }
+    };
+
+    carregarDadosUsuario();
+  }, [user]);
+
   const handleSalvar = async () => {
     setLoading(true);
     setError("");
     setSuccess("");
 
     try {
-      // Atualizar nome do usuário
-      if (user.displayName !== nome) {
-        await updateProfile(user, { displayName: nome });
-      }
-
-      // Atualizar email
-      if (user.email !== email) {
-        await updateEmail(user, email);
-      }
-
       // Atualizar senha
       if (novaSenha) {
         if (!senhaAtual) {
           throw new Error("Informe a senha atual para atualizar a senha.");
         }
-        await auth.currentUser.updatePassword(novaSenha);
+
+        const credential = EmailAuthProvider.credential(user.email, senhaAtual);
+        await reauthenticateWithCredential(user, credential);
+        await updatePassword(user, novaSenha);
       }
+
+      // Salvar dados adicionais no Firestore
+      await setDoc(doc(db, "usuarios", user.uid), {
+        endereco,
+        complemento,
+        telefone,
+      }, { merge: true });
 
       setSuccess("As configurações foram salvas com sucesso!");
     } catch (err) {
@@ -81,14 +101,14 @@ const Configuracoes = () => {
       {/* Cabeçalho */}
       <AppBar position="static">
         <Toolbar>
-           <Button
+          <Button
             color="inherit"
             startIcon={<ArrowBackIcon />}
             onClick={() => navigate("/dashboard")}
-        >
+          >
             Voltar
-        </Button>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          </Button>
+          <Typography variant="h6" sx={{ flexGrow: 1, textAlign: "center" }}>
             Sistema de Gestão Escolar
           </Typography>
         </Toolbar>
@@ -115,14 +135,17 @@ const Configuracoes = () => {
           justifyContent: "center",
         }}
       >
-        <Typography variant="h4" gutterBottom>
-          Configurações
-        </Typography>
+        <Avatar
+          src={foto ? URL.createObjectURL(foto) : user?.photoURL || ""}
+          alt="Foto do usuário"
+          sx={{ width: 120, height: 120, mb: 2 }}
+        />
+        <Typography variant="h5" gutterBottom>{user?.displayName || "Usuário"}</Typography>
         <Box
           component="form"
           sx={{
             width: "100%",
-            maxWidth: 400,
+            maxWidth: 600,
             p: 3,
             backgroundColor: "#fff",
             borderRadius: 2,
@@ -133,21 +156,6 @@ const Configuracoes = () => {
             handleSalvar();
           }}
         >
-          <TextField
-            label="Nome"
-            fullWidth
-            margin="normal"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-          />
-          <TextField
-            label="E-mail"
-            type="email"
-            fullWidth
-            margin="normal"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
           <TextField
             label="Senha Atual"
             type="password"
@@ -165,6 +173,40 @@ const Configuracoes = () => {
             value={novaSenha}
             onChange={(e) => setNovaSenha(e.target.value)}
           />
+          <TextField
+            label="Endereço"
+            fullWidth
+            margin="normal"
+            value={endereco}
+            onChange={(e) => setEndereco(e.target.value)}
+          />
+          <TextField
+            label="Complemento"
+            fullWidth
+            margin="normal"
+            value={complemento}
+            onChange={(e) => setComplemento(e.target.value)}
+          />
+          <TextField
+            label="Telefone"
+            fullWidth
+            margin="normal"
+            value={telefone}
+            onChange={(e) => setTelefone(e.target.value)}
+          />
+          <Button
+            variant="outlined"
+            component="label"
+            fullWidth
+            sx={{ mt: 2 }}
+          >
+            Upload Foto
+            <input
+              type="file"
+              hidden
+              onChange={(e) => setFoto(e.target.files[0])}
+            />
+          </Button>
           {error && (
             <Alert severity="error" sx={{ mt: 2 }}>
               {error}

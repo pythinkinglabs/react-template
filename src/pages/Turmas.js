@@ -135,7 +135,8 @@ const Turmas = () => {
 
       {/* Conteúdo */}
       <Box sx={{ p: 4 }}>
-        <Typography variant="h4" gutterBottom sx={{ textAlign: "center" }}>
+
+        <Typography variant="h4" gutterBottom sx={{ textAlign: "start" }}>
           Gerenciamento de Turmas
         </Typography>
 
@@ -147,7 +148,7 @@ const Turmas = () => {
             setNovaTurma({ nome: "", status: "Ativo", maxAlunos: 30 });
             setEditandoTurma(null);
           }}
-          sx={{ mb: 2 }}
+          sx={{ mb: 2, alignSelf: "flex-end" }}
         >
           Adicionar Turma
         </Button>

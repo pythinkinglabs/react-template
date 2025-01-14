@@ -2,9 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
-  TextField,
   Button,
-  MenuItem,
   Table,
   TableBody,
   TableCell,
@@ -12,6 +10,8 @@ import {
   TableHead,
   TableRow,
   Paper,
+  TextField,
+  MenuItem,
   Alert,
   CircularProgress,
   AppBar,
@@ -21,12 +21,19 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListItemIcon,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import NotificationsIcon from "@mui/icons-material/Notifications";
+import GroupIcon from "@mui/icons-material/Group";
+import SendIcon from "@mui/icons-material/Send";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+
+import { collection, getDocs, addDoc, deleteDoc, updateDoc, doc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { useNavigate } from "react-router-dom";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 const Notificacoes = () => {
   const [grupos, setGrupos] = useState([]);
@@ -36,6 +43,7 @@ const Notificacoes = () => {
     mensagem: "",
     grupoId: "",
   });
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -43,13 +51,9 @@ const Notificacoes = () => {
   const navigate = useNavigate();
 
   const pages = [
-    { name: "Dashboard", path: "/dashboard" },
-    { name: "Alunos", path: "/alunos" },
-    { name: "Turmas", path: "/turmas" },
-    { name: "Plano de Aulas", path: "/plano-aulas" },
-    { name: "Avaliações", path: "/avaliacoes" },
-    { name: "Relatórios", path: "/relatorios" },
-    { name: "Notificações", path: "/notificacoes" },
+    { name: "Dashboard", path: "/dashboard", icon: <NotificationsIcon /> },
+    { name: "Grupos", path: "/grupos", icon: <GroupIcon /> },
+    { name: "Enviar Notificação", path: "/notificacoes", icon: <SendIcon /> },
   ];
 
   const carregarGrupos = async () => {
@@ -93,6 +97,17 @@ const Notificacoes = () => {
     }
   };
 
+  const handleExcluirNotificacao = async (id) => {
+    if (window.confirm("Deseja realmente excluir esta notificação?")) {
+      try {
+        await deleteDoc(doc(db, "notificacoes", id));
+        carregarNotificacoes();
+      } catch (error) {
+        console.error("Erro ao excluir notificação:", error);
+      }
+    }
+  };
+
   useEffect(() => {
     carregarGrupos();
     carregarNotificacoes();
@@ -103,24 +118,32 @@ const Notificacoes = () => {
       {/* Cabeçalho */}
       <AppBar position="static">
         <Toolbar>
-           <Button
-                color="inherit"
-                startIcon={<ArrowBackIcon />}
-                onClick={() => navigate("/dashboard")}
-            >
-                Voltar
-            </Button>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          <Button
+            color="inherit"
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate("/dashboard")}
+          >
+            Voltar
+          </Button>
+          <Typography variant="h6" sx={{ flexGrow: 1, textAlign: "center" }}>
             Sistema de Gestão Escolar
           </Typography>
         </Toolbar>
       </AppBar>
 
       {/* Menu Lateral */}
-      <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-        <List sx={{ width: 240 }}>
+      <Drawer
+        anchor="left"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        sx={{
+          "& .MuiDrawer-paper": { backgroundColor: "rgba(0,0,0,0.8)", color: "#fff" },
+        }}
+      >
+        <List>
           {pages.map((page) => (
             <ListItem button key={page.name} onClick={() => navigate(page.path)}>
+              <ListItemIcon sx={{ color: "#fff" }}>{page.icon}</ListItemIcon>
               <ListItemText primary={page.name} />
             </ListItem>
           ))}
@@ -133,7 +156,7 @@ const Notificacoes = () => {
           Gerenciamento de Notificações
         </Typography>
 
-        {/* Formulário de Envio de Notificações */}
+        {/* Formulário de Envio */}
         <Box
           component="form"
           onSubmit={(e) => {
@@ -196,7 +219,7 @@ const Notificacoes = () => {
           </Button>
         </Box>
 
-        {/* Listagem de Notificações */}
+        {/* Listagem */}
         <Typography variant="h6" gutterBottom>
           Notificações Enviadas
         </Typography>
@@ -207,6 +230,7 @@ const Notificacoes = () => {
                 <TableCell>Título</TableCell>
                 <TableCell>Mensagem</TableCell>
                 <TableCell>Grupo</TableCell>
+                <TableCell align="right">Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -216,6 +240,16 @@ const Notificacoes = () => {
                   <TableCell>{notificacao.mensagem}</TableCell>
                   <TableCell>
                     {grupos.find((grupo) => grupo.id === notificacao.grupoId)?.nome || "N/A"}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      onClick={() => handleExcluirNotificacao(notificacao.id)}
+                      startIcon={<DeleteIcon />}
+                    >
+                      Excluir
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

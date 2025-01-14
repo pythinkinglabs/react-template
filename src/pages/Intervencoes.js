@@ -18,18 +18,15 @@ import {
   MenuItem,
   AppBar,
   Toolbar,
-  IconButton,
   Drawer,
   List,
   ListItem,
   ListItemText,
 } from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { useNavigate } from "react-router-dom";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-
 
 const Intervencoes = () => {
   const [intervencoes, setIntervencoes] = useState([]);
@@ -52,7 +49,6 @@ const Intervencoes = () => {
     { name: "Avaliações", path: "/avaliacoes" },
     { name: "Relatórios", path: "/relatorios" },
     { name: "Notificações", path: "/notificacoes" },
-    { name: "Estrategias", path: "/estrategias" },
   ];
 
   const carregarIntervencoes = async () => {
@@ -73,12 +69,15 @@ const Intervencoes = () => {
     setTurmas(turmasCarregadas);
   };
 
-  const carregarAlunos = async () => {
+  const carregarAlunos = async (turmaId) => {
+    if (!turmaId) {
+      setAlunos([]);
+      return;
+    }
     const querySnapshot = await getDocs(collection(db, "alunos"));
-    const alunosCarregados = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const alunosCarregados = querySnapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .filter((aluno) => aluno.turmaId === turmaId);
     setAlunos(alunosCarregados);
   };
 
@@ -89,7 +88,12 @@ const Intervencoes = () => {
     }
 
     try {
-      await addDoc(collection(db, "intervencoes"), novaIntervencao);
+      if (novaIntervencao.id) {
+        const intervencaoRef = doc(db, "intervencoes", novaIntervencao.id);
+        await updateDoc(intervencaoRef, novaIntervencao);
+      } else {
+        await addDoc(collection(db, "intervencoes"), novaIntervencao);
+      }
       setDialogOpen(false);
       carregarIntervencoes();
       setNovaIntervencao({ turmaId: "", alunoId: "", descricao: "" });
@@ -101,7 +105,6 @@ const Intervencoes = () => {
   useEffect(() => {
     carregarIntervencoes();
     carregarTurmas();
-    carregarAlunos();
   }, []);
 
   return (
@@ -109,14 +112,14 @@ const Intervencoes = () => {
       {/* Cabeçalho */}
       <AppBar position="static">
         <Toolbar>
-           <Button
+          <Button
             color="inherit"
             startIcon={<ArrowBackIcon />}
             onClick={() => navigate("/dashboard")}
-        >
+          >
             Voltar
-        </Button>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          </Button>
+          <Typography variant="h6" sx={{ flexGrow: 1, textAlign: "center" }}>
             Sistema de Gestão Escolar
           </Typography>
         </Toolbar>
@@ -142,7 +145,10 @@ const Intervencoes = () => {
           variant="contained"
           color="primary"
           sx={{ mb: 3 }}
-          onClick={() => setDialogOpen(true)}
+          onClick={() => {
+            setDialogOpen(true);
+            setNovaIntervencao({ turmaId: "", alunoId: "", descricao: "" });
+          }}
         >
           Adicionar Intervenção
         </Button>
@@ -155,6 +161,7 @@ const Intervencoes = () => {
                 <TableCell>Turma</TableCell>
                 <TableCell>Aluno</TableCell>
                 <TableCell>Descrição</TableCell>
+                <TableCell align="right">Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -167,43 +174,40 @@ const Intervencoes = () => {
                     {alunos.find((aluno) => aluno.id === intervencao.alunoId)?.nome || "N/A"}
                   </TableCell>
                   <TableCell>{intervencao.descricao}</TableCell>
-
-
-                  <TableCell>
+                  <TableCell align="right">
                     <Button
-                        variant="outlined"
-                        color="primary"
-                        onClick={() => {
+                      variant="outlined"
+                      color="primary"
+                      onClick={() => {
                         setNovaIntervencao(intervencao);
                         setDialogOpen(true);
-                        }}
-                        sx={{ mr: 1 }}
+                      }}
+                      sx={{ mr: 1 }}
                     >
-                        Editar
+                      Editar
                     </Button>
                     <Button
-                        variant="outlined"
-                        color="error"
-                        onClick={async () => {
+                      variant="outlined"
+                      color="error"
+                      onClick={async () => {
                         try {
-                            await deleteDoc(doc(db, "intervencoes", intervencao.id));
-                            carregarIntervencoes();
+                          await deleteDoc(doc(db, "intervencoes", intervencao.id));
+                          carregarIntervencoes();
                         } catch (error) {
-                            console.error("Erro ao excluir intervenção:", error);
+                          console.error("Erro ao excluir intervenção:", error);
                         }
-                        }}
+                      }}
                     >
-                        Excluir
+                      Excluir
                     </Button>
-                    </TableCell>
-
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
 
-        {/* Modal de Adicionar Intervenção */}
+        {/* Diálogo de Adicionar Intervenção */}
         <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
           <DialogTitle>Adicionar Intervenção</DialogTitle>
           <DialogContent>
@@ -213,7 +217,11 @@ const Intervencoes = () => {
               fullWidth
               margin="normal"
               value={novaIntervencao.turmaId}
-              onChange={(e) => setNovaIntervencao({ ...novaIntervencao, turmaId: e.target.value })}
+              onChange={(e) => {
+                const turmaId = e.target.value;
+                setNovaIntervencao({ ...novaIntervencao, turmaId, alunoId: "" });
+                carregarAlunos(turmaId);
+              }}
             >
               {turmas.map((turma) => (
                 <MenuItem key={turma.id} value={turma.id}>
@@ -230,7 +238,7 @@ const Intervencoes = () => {
               onChange={(e) => setNovaIntervencao({ ...novaIntervencao, alunoId: e.target.value })}
             >
               {alunos.map((aluno) => (
-                <MenuItem key={aluno.id} value={aluno.id}>  
+                <MenuItem key={aluno.id} value={aluno.id}>
                   {aluno.nome}
                 </MenuItem>
               ))}

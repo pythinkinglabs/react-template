@@ -17,17 +17,11 @@ import {
   TextField,
   AppBar,
   Toolbar,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  Drawer,
   MenuItem,
 } from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../services/firebase";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 
 const EstrategiasPedagogicas = () => {
@@ -35,19 +29,21 @@ const EstrategiasPedagogicas = () => {
   const [turmas, setTurmas] = useState([]);
   const [alunos, setAlunos] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [novaEstrategia, setNovaEstrategia] = useState({ turmaId: "", alunoId: "", descricao: "", data: "" });
+  const [novaEstrategia, setNovaEstrategia] = useState({
+    turmaId: "",
+    alunoId: "",
+    descricao: "",
+    data: "",
+    acao: "",
+  });
   const [editandoEstrategia, setEditandoEstrategia] = useState(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
 
-  const pages = [
-    { name: "Dashboard", path: "/dashboard" },
-    { name: "Alunos", path: "/alunos" },
-    { name: "Turmas", path: "/turmas" },
-    { name: "Plano de Aulas", path: "/plano-aulas" },
-    { name: "Avaliações", path: "/avaliacoes" },
-    { name: "Relatórios", path: "/relatorios" },
-    { name: "Notificações", path: "/notificacoes" },
+  const acoesDisponiveis = [
+    "Enviar Notificação",
+    "Atribuir Recurso",
+    "Criar Tarefa",
+    "Marcar Reunião",
   ];
 
   const carregarTurmas = async () => {
@@ -64,7 +60,6 @@ const EstrategiasPedagogicas = () => {
       setAlunos([]);
       return;
     }
-
     const querySnapshot = await getDocs(collection(db, "alunos"));
     const alunosCarregados = querySnapshot.docs
       .map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -82,8 +77,8 @@ const EstrategiasPedagogicas = () => {
   };
 
   const handleSalvarEstrategia = async () => {
-    if (!novaEstrategia.alunoId || !novaEstrategia.descricao) {
-      alert("O aluno e a descrição são obrigatórios.");
+    if (!novaEstrategia.alunoId || !novaEstrategia.descricao || !novaEstrategia.acao) {
+      alert("Todos os campos são obrigatórios.");
       return;
     }
 
@@ -97,21 +92,10 @@ const EstrategiasPedagogicas = () => {
 
       carregarEstrategias();
       setDialogOpen(false);
-      setNovaEstrategia({ turmaId: "", alunoId: "", descricao: "", data: "" });
+      setNovaEstrategia({ turmaId: "", alunoId: "", descricao: "", data: "", acao: "" });
       setEditandoEstrategia(null);
     } catch (error) {
       console.error("Erro ao salvar estratégia:", error);
-    }
-  };
-
-  const handleExcluirEstrategia = async (id) => {
-    if (window.confirm("Tem certeza de que deseja excluir esta estratégia?")) {
-      try {
-        await deleteDoc(doc(db, "estrategias", id));
-        carregarEstrategias();
-      } catch (error) {
-        console.error("Erro ao excluir estratégia:", error);
-      }
     }
   };
 
@@ -119,6 +103,19 @@ const EstrategiasPedagogicas = () => {
     carregarEstrategias();
     carregarTurmas();
   }, []);
+
+  const handleExcluirEstrategia = async (id) => {
+    if (window.confirm("Tem certeza de que deseja excluir esta estratégia?")) {
+      try {
+        await deleteDoc(doc(db, "estrategias", id));
+        carregarEstrategias(); // Atualiza a lista de estratégias após excluir
+      } catch (error) {
+        console.error("Erro ao excluir estratégia:", error);
+        alert("Erro ao excluir estratégia. Tente novamente.");
+      }
+    }
+  };
+  
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f0f4f8" }}>
@@ -133,21 +130,10 @@ const EstrategiasPedagogicas = () => {
             Voltar
           </Button>
           <Typography variant="h6" sx={{ flexGrow: 1, textAlign: "center" }}>
-            Sistema de Gestão Escolar
+            Estratégias Pedagógicas
           </Typography>
         </Toolbar>
       </AppBar>
-
-      {/* Menu Lateral */}
-      <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-        <List sx={{ width: 240 }}>
-          {pages.map((page) => (
-            <ListItem button key={page.name} onClick={() => navigate(page.path)}>
-              <ListItemText primary={page.name} />
-            </ListItem>
-          ))}
-        </List>
-      </Drawer>
 
       {/* Conteúdo Principal */}
       <Box sx={{ p: 4 }}>
@@ -159,7 +145,7 @@ const EstrategiasPedagogicas = () => {
           color="primary"
           onClick={() => {
             setDialogOpen(true);
-            setNovaEstrategia({ turmaId: "", alunoId: "", descricao: "", data: "" });
+            setNovaEstrategia({ turmaId: "", alunoId: "", descricao: "", data: "", acao: "" });
             setEditandoEstrategia(null);
           }}
           sx={{ mb: 2 }}
@@ -173,6 +159,7 @@ const EstrategiasPedagogicas = () => {
                 <TableCell>Aluno</TableCell>
                 <TableCell>Descrição</TableCell>
                 <TableCell>Data</TableCell>
+                <TableCell>Ação</TableCell>
                 <TableCell align="right">Ações</TableCell>
               </TableRow>
             </TableHead>
@@ -184,6 +171,7 @@ const EstrategiasPedagogicas = () => {
                   </TableCell>
                   <TableCell>{estrategia.descricao}</TableCell>
                   <TableCell>{estrategia.data}</TableCell>
+                  <TableCell>{estrategia.acao}</TableCell>
                   <TableCell align="right">
                     <Button
                       variant="outlined"
@@ -241,48 +229,62 @@ const EstrategiasPedagogicas = () => {
               label="Aluno"
               fullWidth
               margin="normal"
-              value={novaEstrategia.alunoId}            onChange={(e) => setNovaEstrategia({ ...novaEstrategia, alunoId: e.target.value })}
-              >
-                {alunos.map((aluno) => (
-                  <MenuItem key={aluno.id} value={aluno.id}>
-                    {aluno.nome}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                label="Descrição"
-                fullWidth
-                multiline
-                rows={4}
-                margin="normal"
-                value={novaEstrategia.descricao}
-                onChange={(e) => setNovaEstrategia({ ...novaEstrategia, descricao: e.target.value })}
-              />
-              <TextField
-                label="Data"
-                type="date"
-                fullWidth
-                margin="normal"
-                InputLabelProps={{
-                  shrink: true,
-                }}
-                value={novaEstrategia.data}
-                onChange={(e) => setNovaEstrategia({ ...novaEstrategia, data: e.target.value })}
-              />
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setDialogOpen(false)} color="secondary">
-                Cancelar
-              </Button>
-              <Button onClick={handleSalvarEstrategia} color="primary">
-                Salvar
-              </Button>
-            </DialogActions>
-          </Dialog>
-        </Box>
+              value={novaEstrategia.alunoId}
+              onChange={(e) => setNovaEstrategia({ ...novaEstrategia, alunoId: e.target.value })}
+            >
+              {alunos.map((aluno) => (
+                <MenuItem key={aluno.id} value={aluno.id}>
+                  {aluno.nome}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="Descrição"
+              fullWidth
+              multiline
+              rows={4}
+              margin="normal"
+              value={novaEstrategia.descricao}
+              onChange={(e) => setNovaEstrategia({ ...novaEstrategia, descricao: e.target.value })}
+            />
+            <TextField
+              label="Data"
+              type="date"
+              fullWidth
+              margin="normal"
+              InputLabelProps={{
+                shrink: true,
+              }}
+              value={novaEstrategia.data}
+              onChange={(e) => setNovaEstrategia({ ...novaEstrategia, data: e.target.value })}
+            />
+            <TextField
+              select
+              label="Ação"
+              fullWidth
+              margin="normal"
+              value={novaEstrategia.acao}
+              onChange={(e) => setNovaEstrategia({ ...novaEstrategia, acao: e.target.value })}
+            >
+              {acoesDisponiveis.map((acao, index) => (
+                <MenuItem key={index} value={acao}>
+                  {acao}
+                </MenuItem>
+              ))}
+            </TextField>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDialogOpen(false)} color="secondary">
+              Cancelar
+            </Button>
+            <Button onClick={handleSalvarEstrategia} color="primary">
+              Salvar
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
-    );
-  };
-  
-  export default EstrategiasPedagogicas;
-  
+    </Box>
+  );
+};
+
+export default EstrategiasPedagogicas;

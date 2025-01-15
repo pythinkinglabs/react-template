@@ -2,7 +2,9 @@ import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
+  TextField,
   Button,
+  MenuItem,
   Table,
   TableBody,
   TableCell,
@@ -10,56 +12,41 @@ import {
   TableHead,
   TableRow,
   Paper,
-  TextField,
-  MenuItem,
   AppBar,
   Toolbar,
-  Drawer,
-  List,
-  ListItem,
-  ListItemText,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../services/firebase";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 
 const Relatorios = () => {
-  const [relatorios, setRelatorios] = useState([]);
-  const [frequencias, setFrequencias] = useState([]);
+  const [tipoRelatorio, setTipoRelatorio] = useState("frequencia");
+  const [dados, setDados] = useState([]);
   const [turmas, setTurmas] = useState([]);
   const [filtros, setFiltros] = useState({ turmaId: "", aluno: "", data: "" });
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
 
-  const pages = [
-    { name: "Dashboard", path: "/dashboard" },
-    { name: "Alunos", path: "/alunos" },
-    { name: "Turmas", path: "/turmas" },
-    { name: "Plano de Aulas", path: "/plano-aulas" },
-    { name: "Avaliações", path: "/avaliacoes" },
-    { name: "Relatórios", path: "/relatorios" },
-    { name: "Notificações", path: "/notificacoes" },
+  const tiposRelatorios = [
+    { value: "frequencia", label: "Frequência" },
+    { value: "turmas", label: "Turmas" },
+    { value: "alunos", label: "Alunos" },
+    { value: "planos", label: "Planos de Aula" },
   ];
 
-  // Carregar dados de relatórios, frequências e turmas do Firestore
-  const carregarRelatorios = async () => {
-    const querySnapshot = await getDocs(collection(db, "relatorios"));
+  const carregarDados = async () => {
+    let collectionName = tipoRelatorio;
+    if (tipoRelatorio === "planos") collectionName = "planosAulas";
+
+    const querySnapshot = await getDocs(collection(db, collectionName));
     const dadosCarregados = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
-    setRelatorios(dadosCarregados);
-  };
-
-  const carregarFrequencias = async () => {
-    const querySnapshot = await getDocs(collection(db, "frequencias"));
-    const frequenciasCarregadas = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    setFrequencias(frequenciasCarregadas);
+    setDados(dadosCarregados);
   };
 
   const carregarTurmas = async () => {
@@ -71,37 +58,50 @@ const Relatorios = () => {
     setTurmas(turmasCarregadas);
   };
 
-  const aplicarFiltros = (dados) => {
+  const aplicarFiltros = () => {
     return dados.filter((item) => {
       const matchTurma = !filtros.turmaId || item.turmaId === filtros.turmaId;
       const matchAluno =
         !filtros.aluno ||
-        item.aluno.toLowerCase().includes(filtros.aluno.toLowerCase());
-      const matchData =
-        !filtros.data || item.data.includes(filtros.data);
+        (item.aluno && item.aluno.toLowerCase().includes(filtros.aluno.toLowerCase()));
+      const matchData = !filtros.data || item.data === filtros.data;
       return matchTurma && matchAluno && matchData;
     });
   };
 
   const exportarExcel = () => {
-    const dadosParaExportar = aplicarFiltros(frequencias).map((item) => ({
+    const dadosParaExportar = aplicarFiltros().map((item) => ({
       Turma: turmas.find((turma) => turma.id === item.turmaId)?.nome || "N/A",
-      Aluno: item.aluno,
-      Data: item.data,
-      Status: item.status,
+      Aluno: item.aluno || "N/A",
+      Data: item.data || "N/A",
+      Status: item.status || "N/A",
     }));
 
     const ws = XLSX.utils.json_to_sheet(dadosParaExportar);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Frequências");
-    XLSX.writeFile(wb, "frequencias.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, "Relatório");
+    XLSX.writeFile(wb, "relatorio.xlsx");
+  };
+
+  const exportarPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Relatório - Sistema de Gestão Escolar", 20, 10);
+    doc.autoTable({
+      head: [["Turma", "Aluno", "Data", "Status"]],
+      body: aplicarFiltros().map((item) => [
+        turmas.find((turma) => turma.id === item.turmaId)?.nome || "N/A",
+        item.aluno || "N/A",
+        item.data || "N/A",
+        item.status || "N/A",
+      ]),
+    });
+    doc.save("relatorio.pdf");
   };
 
   useEffect(() => {
-    carregarRelatorios();
-    carregarFrequencias();
+    carregarDados();
     carregarTurmas();
-  }, []);
+  }, [tipoRelatorio]);
 
   return (
     <Box sx={{ minHeight: "100vh", backgroundColor: "#f0f4f8" }}>
@@ -115,25 +115,32 @@ const Relatorios = () => {
             Voltar
           </Button>
           <Typography variant="h6" sx={{ flexGrow: 1, textAlign: "center" }}>
-            Sistema de Gestão Escolar
+            Relatórios
           </Typography>
         </Toolbar>
       </AppBar>
 
-      <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-        <List sx={{ width: 240 }}>
-          {pages.map((page) => (
-            <ListItem button key={page.name} onClick={() => navigate(page.path)}>
-              <ListItemText primary={page.name} />
-            </ListItem>
-          ))}
-        </List>
-      </Drawer>
-
       <Box sx={{ p: 4 }}>
         <Typography variant="h4" align="center" gutterBottom>
-          Relatórios e Frequências
+          Relatórios
         </Typography>
+
+        {/* Seleção de Tipo de Relatório */}
+        <Box sx={{ display: "flex", gap: 2, mb: 4 }}>
+          <TextField
+            select
+            label="Tipo de Relatório"
+            value={tipoRelatorio}
+            onChange={(e) => setTipoRelatorio(e.target.value)}
+            fullWidth
+          >
+            {tiposRelatorios.map((tipo) => (
+              <MenuItem key={tipo.value} value={tipo.value}>
+                {tipo.label}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Box>
 
         {/* Filtros */}
         <Box sx={{ display: "flex", gap: 2, mb: 4 }}>
@@ -151,12 +158,14 @@ const Relatorios = () => {
               </MenuItem>
             ))}
           </TextField>
-          <TextField
-            label="Filtrar por Aluno"
-            value={filtros.aluno}
-            onChange={(e) => setFiltros({ ...filtros, aluno: e.target.value })}
-            fullWidth
-          />
+          {tipoRelatorio === "frequencia" && (
+            <TextField
+              label="Filtrar por Aluno"
+              value={filtros.aluno}
+              onChange={(e) => setFiltros({ ...filtros, aluno: e.target.value })}
+              fullWidth
+            />
+          )}
           <TextField
             label="Filtrar por Data"
             type="date"
@@ -170,15 +179,15 @@ const Relatorios = () => {
         {/* Botões de Exportação */}
         <Box sx={{ mb: 4, display: "flex", justifyContent: "center", gap: 2 }}>
           <Button variant="contained" color="primary" onClick={exportarExcel}>
-            Exportar Frequências para Excel
+            Exportar para Excel
+          </Button>
+          <Button variant="contained" color="secondary" onClick={exportarPDF}>
+            Exportar para PDF
           </Button>
         </Box>
 
-        {/* Tabela de Frequências */}
-        <Typography variant="h6" gutterBottom>
-          Frequências
-        </Typography>
-        <TableContainer component={Paper} sx={{ mb: 4 }}>
+        {/* Tabela de Dados */}
+        <TableContainer component={Paper}>
           <Table>
             <TableHead>
               <TableRow>
@@ -189,14 +198,14 @@ const Relatorios = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {aplicarFiltros(frequencias).map((frequencia) => (
-                <TableRow key={frequencia.id}>
+              {aplicarFiltros().map((item, index) => (
+                <TableRow key={index}>
                   <TableCell>
-                    {turmas.find((turma) => turma.id === frequencia.turmaId)?.nome || "N/A"}
+                    {turmas.find((turma) => turma.id === item.turmaId)?.nome || "N/A"}
                   </TableCell>
-                  <TableCell>{frequencia.aluno}</TableCell>
-                  <TableCell>{frequencia.data}</TableCell>
-                  <TableCell>{frequencia.status}</TableCell>
+                  <TableCell>{item.aluno || "N/A"}</TableCell>
+                  <TableCell>{item.data || "N/A"}</TableCell>
+                  <TableCell>{item.status || "N/A"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

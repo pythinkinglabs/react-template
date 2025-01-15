@@ -50,19 +50,22 @@ const Notificacoes = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
 
-  const pages = [
-    { name: "Dashboard", path: "/dashboard", icon: <NotificationsIcon /> },
-    { name: "Grupos", path: "/grupos", icon: <GroupIcon /> },
-    { name: "Enviar Notificação", path: "/notificacoes", icon: <SendIcon /> },
-  ];
+ 
 
   const carregarGrupos = async () => {
-    const querySnapshot = await getDocs(collection(db, "grupos"));
-    const gruposCarregados = querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    setGrupos(gruposCarregados);
+    // const querySnapshot = await getDocs(collection(db, "grupos"));
+    // const gruposCarregados = querySnapshot.docs.map((doc) => ({
+    //   id: doc.id,
+    //   ...doc.data(),
+    // }));
+    const gruposMock = [
+      { id: '1', nome: 'Admin' },
+      { id: '2', nome: 'Professor' },
+      { id: '3', nome: 'Alunos' },
+      { id: '4', nome: 'Pais' },
+      { id: '5', nome: 'Sala X' },
+    ];
+    setGrupos(gruposMock);
   };
 
   const carregarNotificacoes = async () => {
@@ -129,26 +132,8 @@ const Notificacoes = () => {
             Sistema de Gestão Escolar
           </Typography>
         </Toolbar>
-      </AppBar>
+      </AppBar>     
 
-      {/* Menu Lateral */}
-      <Drawer
-        anchor="left"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        sx={{
-          "& .MuiDrawer-paper": { backgroundColor: "rgba(0,0,0,0.8)", color: "#fff" },
-        }}
-      >
-        <List>
-          {pages.map((page) => (
-            <ListItem button key={page.name} onClick={() => navigate(page.path)}>
-              <ListItemIcon sx={{ color: "#fff" }}>{page.icon}</ListItemIcon>
-              <ListItemText primary={page.name} />
-            </ListItem>
-          ))}
-        </List>
-      </Drawer>
 
       {/* Conteúdo Principal */}
       <Box sx={{ p: 4 }}>

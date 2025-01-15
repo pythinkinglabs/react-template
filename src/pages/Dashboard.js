@@ -116,7 +116,8 @@ const Dashboard = () => {
         const planosAulasSnapshot = await getDocs(collection(db, "planosAulas"));
         const estrategiasSnapshot = await getDocs(collection(db, "estrategias"));
 
-        setData({
+       
+      setData({
           totalTurmas: turmasSnapshot.size || 0,
           totalAlunos: alunosSnapshot.size || 0,
           totalPlanoDeAulas: planosAulasSnapshot.size || 0,
@@ -130,6 +131,16 @@ const Dashboard = () => {
             { name: "Janeiro", value: 95 },
             { name: "Fevereiro", value: 90 },
             { name: "Março", value: 92 },
+          ],
+          estrategias: [
+            { name: "Aluno 1", value: 5 },
+            { name: "Aluno 2", value: 7 },
+            { name: "Aluno 3", value: 4 },
+          ],
+          planosAulas: [
+            { name: "Turma A", value: 10 },
+            { name: "Turma B", value: 15 },
+            { name: "Turma C", value: 8 },
           ],
         });
       } catch (error) {
@@ -186,6 +197,7 @@ const Dashboard = () => {
                 { key: "Alunos", value: data.totalAlunos, color: "#388e3c" },
                 { key: "Plano de Aulas", value: data.totalPlanoDeAulas, color: "#d32f2f" },
                 { key: "Estratégias", value: data.totalEstrategias, color: "#f57c00" },
+                
               ].map((item, index) => (
                 <Grid item xs={12} sm={6} md={3} key={index}>
                   <Card sx={{ backgroundColor: item.color, color: "#fff" }}>
@@ -223,31 +235,22 @@ const Dashboard = () => {
 
               {/* Gráficos */}
               <Grid item xs={12} md={9}>
-                <Box sx={{ mb: 4, textAlign: "center" }}>
-                  <Button
-                    variant={chartType === "pie" ? "contained" : "outlined"}
-                    onClick={() => setChartType("pie")}
-                    sx={{ mx: 1 }}
-                  >
-                    Pizza
-                  </Button>
-                  <Button
-                    variant={chartType === "bar" ? "contained" : "outlined"}
-                    onClick={() => setChartType("bar")}
-                    sx={{ mx: 1 }}
-                  >
-                    Barra
-                  </Button>
-                </Box>
-
-                <Grid container spacing={4}>
-                  {[{ title: "Desempenho", data: data.desempenho }, { title: "Frequência", data: data.frequencia }].map(
-                    (chart, index) => (
+                
+            <Grid container spacing={4}>
+              <Grid item xs={12} md={9}>
+                
+                  <Grid container spacing={4}>
+                    {[
+                      { title: "Desempenho", data: data.desempenho },
+                      { title: "Frequência", data: data.frequencia },
+                      { title: "Estratégias por Aluno", data: data.estrategias },
+                      { title: "Plano de Aulas por Turma", data: data.planosAulas },
+                    ].map((chart, index) => (
                       <Grid item xs={12} md={6} key={index}>
                         <Typography variant="h6" align="center" gutterBottom>
                           {chart.title}
                         </Typography>
-                        <ResponsiveContainer width="100%" height={300}>
+                        <ResponsiveContainer width="100%" height={250}>
                           {chartType === "pie" ? (
                             <PieChart>
                               <Pie
@@ -276,9 +279,10 @@ const Dashboard = () => {
                           )}
                         </ResponsiveContainer>
                       </Grid>
-                    )
-                  )}
+                    ))}
+                  </Grid>
                 </Grid>
+              </Grid>
               </Grid>
             </Grid>
           </>
